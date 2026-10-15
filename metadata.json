@@ -1,0 +1,6 @@
+{
+  "name": "Manejo Clínico de Dengue - Ministério da Saúde",
+  "description": "Aplicativo interativo para classificação de risco e manejo clínico de pacientes com suspeita de dengue conforme o fluxograma oficial do Ministério da Saúde (Grupos A, B, C e D), com calculadoras de hidratação venosa e oral, prova do laço, fluxograma decisório e cartão de acompanhamento para impressão.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
