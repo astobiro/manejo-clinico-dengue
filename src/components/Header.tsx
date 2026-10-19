@@ -6,6 +6,7 @@ import {
   Network, 
   BookOpen, 
   FileText, 
+  Database,
   Menu, 
   X, 
   PhoneCall 
@@ -25,11 +26,12 @@ export const Header: React.FC<HeaderProps> = ({
 
   const navItems = [
     { id: 'triagem', label: 'Classificação de Risco', icon: ClipboardList, emoji: '📋' },
-    { id: 'hidratacao', label: 'Calculadora de Hidratação', icon: Droplets, emoji: '💧' },
+    { id: 'hidratacao', label: 'Calculadora Hidratação', icon: Droplets, emoji: '💧' },
     { id: 'laco', label: 'Prova do Laço', icon: Stethoscope, emoji: '🩺' },
+    { id: 'banco', label: 'Banco Local', icon: Database, emoji: '💾' },
     { id: 'fluxograma', label: 'Fluxograma de Manejo', icon: Network, emoji: '🦟' },
     { id: 'guia', label: 'Guia Clínico & Alarme', icon: BookOpen, emoji: '📚' },
-    { id: 'cartao', label: 'Cartão de Acompanhamento', icon: FileText, emoji: '📄' },
+    { id: 'cartao', label: 'Cartão do Paciente', icon: FileText, emoji: '📄' },
   ];
 
   const handleSelectTab = (id: string) => {
@@ -101,8 +103,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Desktop 3x3 Navigation Grid Beside Title */}
-          <nav className="hidden lg:grid grid-cols-3 gap-1.5 flex-shrink-0 text-xs font-semibold">
+          {/* Desktop Navigation Grid Beside Title */}
+          <nav className="hidden lg:grid grid-cols-3 xl:grid-cols-4 gap-1.5 flex-shrink-0 text-xs font-semibold">
             {navItems.map((item) => {
               const isActive = activeTab === item.id;
               return (

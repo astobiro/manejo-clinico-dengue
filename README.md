@@ -32,8 +32,14 @@ Desenvolvido com base nas diretrizes oficiais do **Ministério da Saúde do Bras
 6. **Operação 100% Offline (PWA)**
    - Funciona sem conexão à internet em postos de saúde, tendas de hidratação e emergências, com suporte à instalação nativa em Android, iOS e desktop.
 
+7. **Banco de Dados Local de Atendimentos (IndexedDB)**
+   - **Armazenamento 100% Local e Offline:** Gravação persistente e segura de todos os atendimentos, critérios de triagem, cálculo de hidratação e condutas diretamente na memória do dispositivo (IndexedDB).
+   - **Privacidade & Segurança:** Nenhum dado clínico ou identificador de paciente trafega para serviços ou nuvens externas.
+   - **Exportação & Backup:** Exportação instantânea para CSV (compatível com Excel, LibreOffice e Google Planilhas) e backup completo em formato JSON.
+
 ---
 
 ### Tecnologias
 - **Frontend:** React, TypeScript, Tailwind CSS, Lucide Icons.
 - **PWA & Offline:** Vite Plugin PWA, Workbox Service Worker.
+- **Armazenamento:** IndexedDB com fallback em LocalStorage (offline-first).

@@ -8,6 +8,7 @@ import { FlowchartVisualizer } from './components/FlowchartVisualizer';
 import { ClinicalGuide } from './components/ClinicalGuide';
 import { PrintableCardModal } from './components/PrintableCardModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { LocalDatabaseView } from './components/LocalDatabaseView';
 
 const getSavedTriageInitial = () => {
   try {
@@ -89,6 +90,7 @@ export default function App() {
             onOpenCardPrint={handleOpenCardPrint}
             onOpenTourniquetTest={() => setIsTourniquetModalOpen(true)}
             onOpenHydrationModal={handleOpenHydrationModal}
+            onNavigateToDatabase={() => setActiveTab('banco')}
           />
         </div>
 
@@ -109,6 +111,14 @@ export default function App() {
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 border-l-[6px] border-l-[#2563EB] p-5 sm:p-6">
             <TourniquetTestCalculator isModal={false} />
           </div>
+        )}
+
+        {/* TAB: BANCO DE DADOS LOCAL (INDEXEDDB) */}
+        {activeTab === 'banco' && (
+          <LocalDatabaseView
+            onOpenCardPrint={handleOpenCardPrint}
+            onNavigateToTriage={() => setActiveTab('triagem')}
+          />
         )}
 
         {/* TAB 4: FLUXOGRAMA DE MANEJO */}

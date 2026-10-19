@@ -33,10 +33,15 @@ import {
   Info,
   Clock,
   Printer,
-  ChevronRight
+  ChevronRight,
+  Database,
+  Save,
+  Check
 } from 'lucide-react';
 
 import { FullTriagePrintData } from '../types/print';
+import { localDatabase } from '../services/localDatabase';
+import { ClinicalAttendanceRecord } from '../types/database';
 
 interface TriageWizardProps {
   patientWeight?: number;
@@ -46,6 +51,7 @@ interface TriageWizardProps {
   onOpenCardPrint: (data: FullTriagePrintData) => void;
   onOpenTourniquetTest: () => void;
   onOpenHydrationModal: (weight: number, group: DengueGroup, isPediatric: boolean) => void;
+  onNavigateToDatabase?: () => void;
 }
 
 const TRIAGE_STORAGE_KEY = 'dengue_triage_progress_v1';
@@ -83,9 +89,15 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
   onOpenCardPrint,
   onOpenTourniquetTest,
   onOpenHydrationModal,
+  onNavigateToDatabase,
 }) => {
   // Load saved state from localStorage if present
   const saved = React.useMemo(() => loadSavedTriage(), []);
+
+  // Local DB state
+  const [isSavingLocal, setIsSavingLocal] = useState<boolean>(false);
+  const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
+  const [saveFeedback, setSaveFeedback] = useState<{ type: 'success' | 'warning' | 'error'; message: string } | null>(null);
 
   // Patient basic info
   const [patientName, setPatientName] = useState<string>(() => saved?.patientName ?? '');
@@ -335,7 +347,81 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
     });
     setClassifiedResult(null);
     setCurrentStep(1);
+    setSavedRecordId(null);
+    setSaveFeedback(null);
     onPediatricChange?.(false);
+  };
+
+  const handleSaveAttendance = async () => {
+    if (!classifiedResult) return;
+    setIsSavingLocal(true);
+    setSaveFeedback(null);
+
+    try {
+      const recordId = savedRecordId || ('atend_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6));
+      const nowIso = new Date().toISOString();
+
+      const record: ClinicalAttendanceRecord = {
+        id: recordId,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        patientName: patientName.trim() || 'Paciente Não Identificado',
+        patientAge,
+        patientWeight,
+        isPediatric,
+        facilityName: facilityName.trim() || 'Unidade de Saúde',
+        attendingProfessional: 'Profissional de Saúde',
+        diseaseDay: typeof diseaseDay === 'number' ? diseaseDay : 0,
+        group: classifiedResult.group,
+        title: classifiedResult.title,
+        subtitle: classifiedResult.subtitle,
+        setting: classifiedResult.setting,
+        duration: classifiedResult.duration,
+        stage1Severity: {
+          data: severitySigns,
+          detectedList: classifiedResult.detectedSeveritySigns,
+        },
+        stage2Warning: {
+          data: warningSigns,
+          detectedList: classifiedResult.detectedWarningSigns,
+        },
+        stage3Special: {
+          data: specialConditions,
+          detectedList: classifiedResult.detectedSpecialConditions,
+        },
+        stage4Symptoms: {
+          data: symptoms,
+          isSuspected: isDengueSuspected,
+        },
+        labData,
+        conduct: classifiedResult.conduct,
+        mandatoryExams: classifiedResult.mandatoryExams,
+        recommendedExams: classifiedResult.recommendedExams,
+        hydrationCalc: {
+          totalDailyVolumeMl: hydrationCalc.totalDailyVolumeMl,
+          oralRehydrationMl: hydrationCalc.oralRehydrationMl,
+          homeFluidsMl: hydrationCalc.homeFluidsMl,
+          expansionStage1VolumeMl: hydrationCalc.expansionStage1VolumeMl,
+          expansionStage2VolumeMl: hydrationCalc.expansionStage2VolumeMl,
+          rapidExpansionVolume20min: hydrationCalc.rapidExpansionVolume20min,
+          albumin5PercentVolumeMl: hydrationCalc.albumin5PercentVolumeMl,
+        },
+      };
+
+      await localDatabase.saveRecord(record);
+      setSavedRecordId(recordId);
+      setSaveFeedback({
+        type: 'success',
+        message: 'Atendimento gravado com sucesso no Banco de Dados Local do aparelho! 💾',
+      });
+    } catch (e: any) {
+      setSaveFeedback({
+        type: 'error',
+        message: 'Erro ao salvar atendimento no banco local: ' + (e.message || 'desconhecido'),
+      });
+    } finally {
+      setIsSavingLocal(false);
+    }
   };
 
   const hydrationCalc = calculateHydration(
@@ -1286,6 +1372,79 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
                     ))}
                   </ul>
                 </div>
+              </div>
+
+              {/* Local Storage & Cloud Sync Card */}
+              <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-slate-50 p-4 sm:p-5 rounded-xl border border-blue-200/80 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-lg shadow-sm flex-shrink-0">
+                      💾
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                        <span>Banco de Dados Local do Aparelho</span>
+                        {savedRecordId && (
+                          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                            <Check className="w-3 h-3" /> Gravado
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-[11px] text-slate-600">
+                        Grave este atendimento com todos os parâmetros do fluxo no banco local para consultas, relatórios ou exportação.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveAttendance}
+                      disabled={isSavingLocal}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs shadow-blue-200 transition disabled:opacity-50"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>{isSavingLocal ? 'Salvando...' : savedRecordId ? 'Salvo no Banco Local ✅' : 'Salvar no Banco Local'}</span>
+                    </button>
+
+                    {onNavigateToDatabase && (
+                      <button
+                        type="button"
+                        onClick={onNavigateToDatabase}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-xs transition"
+                      >
+                        <Database className="w-3.5 h-3.5 text-[#2563EB]" />
+                        <span>Ver Banco Local</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {saveFeedback && (
+                  <div className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-2 ${
+                    saveFeedback.type === 'success'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                      : saveFeedback.type === 'warning'
+                      ? 'bg-amber-50 border-amber-200 text-amber-900'
+                      : 'bg-red-50 border-red-200 text-red-900'
+                  }`}>
+                    <div className="flex items-center gap-2 font-medium">
+                      {saveFeedback.type === 'success' ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                      )}
+                      <span>{saveFeedback.message}</span>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setSaveFeedback(null)}
+                      className="text-[11px] font-bold text-slate-500 hover:text-slate-700 underline"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
