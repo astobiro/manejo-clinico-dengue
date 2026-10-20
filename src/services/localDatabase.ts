@@ -162,7 +162,7 @@ export const localDatabase = {
     }, null, 2);
   },
 
-  // Export records as CSV
+  // Export records as CSV with semicolon separator (standard for Excel pt-BR)
   async exportDatabaseAsCsv(): Promise<string> {
     const records = await this.getAllRecords();
     const headers = [
@@ -201,14 +201,14 @@ export const localDatabase = {
       escapeCsv(r.setting),
       escapeCsv(r.facilityName),
       escapeCsv(r.attendingProfessional),
-      escapeCsv(r.stage2Warning.detectedList.join('; ') || 'Nenhum'),
-      escapeCsv(r.stage1Severity.detectedList.join('; ') || 'Nenhum'),
-      escapeCsv(r.stage3Special.detectedList.join('; ') || 'Nenhuma'),
+      escapeCsv(r.stage2Warning.detectedList.join(' | ') || 'Nenhum'),
+      escapeCsv(r.stage1Severity.detectedList.join(' | ') || 'Nenhum'),
+      escapeCsv(r.stage3Special.detectedList.join(' | ') || 'Nenhuma'),
       escapeCsv(r.tourniquetTest ? (r.tourniquetTest.isPositive ? `Positiva (${r.tourniquetTest.petechiaeCount} petequias)` : 'Negativa') : 'Nao realizada'),
       escapeCsv(r.conduct.hydration),
-      escapeCsv(r.mandatoryExams.join('; ')),
+      escapeCsv(r.mandatoryExams.join(' | ')),
     ]);
 
-    return [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
+    return [headers.join(';'), ...rows.map((row) => row.join(';'))].join('\r\n');
   },
 };

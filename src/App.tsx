@@ -9,6 +9,7 @@ import { ClinicalGuide } from './components/ClinicalGuide';
 import { PrintableCardModal } from './components/PrintableCardModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { LocalDatabaseView } from './components/LocalDatabaseView';
+import { ClinicalAttendanceRecord } from './types/database';
 
 const getSavedTriageInitial = () => {
   try {
@@ -29,6 +30,9 @@ const getSavedTriageInitial = () => {
 export default function App() {
   const initialTriage = React.useMemo(() => getSavedTriageInitial(), []);
   const [activeTab, setActiveTab] = useState<string>('triagem');
+
+  // Record selected from database for editing/updating in TriageWizard
+  const [recordToLoadInTriage, setRecordToLoadInTriage] = useState<ClinicalAttendanceRecord | null>(null);
 
   // Shared weight and pediatric status across triage and hydration calculator
   const [patientWeight, setPatientWeight] = useState<number>(initialTriage.weight);
@@ -70,6 +74,17 @@ export default function App() {
     setActiveTab('triagem');
   };
 
+  const handleLoadRecordToTriage = (record: ClinicalAttendanceRecord) => {
+    setRecordToLoadInTriage(record);
+    if (record.patientWeight) {
+      setPatientWeight(record.patientWeight);
+    }
+    if (record.isPediatric !== undefined) {
+      setIsPediatric(record.isPediatric);
+    }
+    setActiveTab('triagem');
+  };
+
   return (
     <div className="min-h-screen bg-[#F3F4F6] flex flex-col text-slate-800 font-sans antialiased">
       {/* App Official Header */}
@@ -91,6 +106,8 @@ export default function App() {
             onOpenTourniquetTest={() => setIsTourniquetModalOpen(true)}
             onOpenHydrationModal={handleOpenHydrationModal}
             onNavigateToDatabase={() => setActiveTab('banco')}
+            recordToLoad={recordToLoadInTriage}
+            onRecordLoaded={() => setRecordToLoadInTriage(null)}
           />
         </div>
 
@@ -118,6 +135,7 @@ export default function App() {
           <LocalDatabaseView
             onOpenCardPrint={handleOpenCardPrint}
             onNavigateToTriage={() => setActiveTab('triagem')}
+            onLoadRecordToTriage={handleLoadRecordToTriage}
           />
         )}
 
@@ -135,76 +153,7 @@ export default function App() {
             <PrintableCardModal
               isModal={false}
               onClose={() => setActiveTab('triagem')}
-              initialData={cardPrintData || {
-                patientName: 'Nome do Paciente',
-                patientAge: 30,
-                patientWeight: 70,
-                facilityName: 'Unidade de Saúde / Pronto Atendimento',
-                attendingProfessional: 'Profissional de Saúde',
-                group: DengueGroup.GROUP_A,
-                title: 'GRUPO A — Dengue sem Sinais de Alarme',
-                subtitle: 'Manejo Ambulatorial com Hidratação Oral Imediata',
-                setting: 'Ambulatorial (UBS)',
-                duration: 'Retorno diário ou no dia da queda da febre',
-                diseaseDay: 3,
-                stage1Severity: {
-                  data: {
-                    severePlasmaLeakageShock: false,
-                    severeBleeding: false,
-                    severeOrganImpairment: false,
-                    respiratoryFailureFluidOverload: false,
-                    hypotensionCyanosisLateShock: false,
-                  },
-                  detectedList: [],
-                },
-                stage2Warning: {
-                  data: {
-                    intenseContinuousAbdominalPain: false,
-                    persistentVomiting: false,
-                    fluidAccumulation: false,
-                    posturalHypotensionLipotimia: false,
-                    hepatomegalyOver2cm: false,
-                    mucosalBleeding: false,
-                    lethargyIrritability: false,
-                    progressiveHematocritIncrease: false,
-                  },
-                  detectedList: [],
-                },
-                stage3Special: {
-                  data: {
-                    infantUnder24Months: false,
-                    pregnant: false,
-                    elderlyOver65: false,
-                    hypertensionOrCardiovascular: false,
-                    diabetesMellitus: false,
-                    copdOrAsthma: false,
-                    obesity: false,
-                    chronicHematologicDisease: false,
-                    chronicKidneyDisease: false,
-                    pepticAcidDisease: false,
-                    hepatopathyOrAutoimmune: false,
-                    socialRiskOrOralHydrationImpossibility: false,
-                    skinBleedingSpontaneousOrInduced: false,
-                  },
-                  detectedList: [],
-                },
-                stage4Symptoms: {
-                  data: {
-                    hasFever: true,
-                    feverDays: 3,
-                    symptoms: {
-                      nauseaVomiting: true,
-                      rash: false,
-                      myalgiaArthralgia: true,
-                      headacheRetroorbital: true,
-                      petechiaeOrTourniquet: false,
-                      leukopenia: false,
-                    },
-                    isChildAcuteFeverNoFocus: false,
-                  },
-                  isSuspected: true,
-                },
-              }}
+              initialData={cardPrintData}
             />
           </div>
         )}

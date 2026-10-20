@@ -29,17 +29,30 @@ export const HydrationCalculatorModal: React.FC<HydrationCalculatorModalProps> =
   const [localWeight, setLocalWeight] = useState<number>(initialWeight);
   const weightKg = weight !== undefined ? weight : localWeight;
 
+  // Weight text input string to allow fluid backspacing without forcing 1 on mobile
+  const [weightInputStr, setWeightInputStr] = useState<string>(() => String(weightKg));
+
   const handleWeightChange = (newVal: number) => {
     const safeVal = Math.max(1, newVal);
     setLocalWeight(safeVal);
+    setWeightInputStr(String(safeVal));
     onWeightChange?.(safeVal);
   };
+
+  React.useEffect(() => {
+    if (weightKg !== undefined && !isNaN(weightKg)) {
+      if (parseFloat(weightInputStr) !== weightKg && weightInputStr !== '') {
+        setWeightInputStr(String(weightKg));
+      }
+    }
+  }, [weightKg]);
 
   const [localIsPediatric, setLocalIsPediatric] = useState<boolean>(
     externalIsPediatric !== undefined ? externalIsPediatric : initialIsPediatric
   );
 
   const isPediatric = externalIsPediatric !== undefined ? externalIsPediatric : localIsPediatric;
+  const [isElderly, setIsElderly] = useState<boolean>(false);
 
   const handlePediatricToggle = (val: boolean) => {
     setLocalIsPediatric(val);
@@ -53,7 +66,6 @@ export const HydrationCalculatorModal: React.FC<HydrationCalculatorModalProps> =
 
   const [selectedGroup, setSelectedGroup] = useState<DengueGroup>(initialGroup);
   const [hasHeartOrKidneyDisease, setHasHeartOrKidneyDisease] = useState<boolean>(false);
-  const [isElderly, setIsElderly] = useState<boolean>(false);
 
   const calc = calculateHydration(weightKg, isPediatric, selectedGroup);
 
@@ -71,7 +83,7 @@ export const HydrationCalculatorModal: React.FC<HydrationCalculatorModalProps> =
               Calculadora de Hidratação na Dengue
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Diretrizes Clínicas • Adultos e Crianças (Grupos A, B, C e D)
+              Diretrizes Clínicas • Adultos, Idosos e Crianças (Grupos A, B, C e D)
             </p>
           </div>
         </div>
@@ -87,53 +99,98 @@ export const HydrationCalculatorModal: React.FC<HydrationCalculatorModalProps> =
 
       {/* Inputs Grid */}
       <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {/* Patient Category */}
-          <div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Patient Category with Idoso Button */}
+          <div className="lg:col-span-5">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
               Faixa Etária / Perfil
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => handlePediatricToggle(false)}
-                className={`py-2 px-3 rounded-xl text-xs font-bold transition border text-center ${
-                  !isPediatric
-                    ? 'bg-[#2563EB] text-white border-blue-600 shadow-md shadow-blue-200'
-                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                👤 Adulto (≥ 13a)
-              </button>
-              <button
-                type="button"
-                onClick={() => handlePediatricToggle(true)}
-                className={`py-2 px-3 rounded-xl text-xs font-bold transition border text-center ${
+                onClick={() => {
+                  setIsElderly(false);
+                  handlePediatricToggle(true);
+                }}
+                className={`py-2 px-2 rounded-xl text-xs font-bold transition border text-center ${
                   isPediatric
                     ? 'bg-[#2563EB] text-white border-blue-600 shadow-md shadow-blue-200'
                     : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
               >
-                👶 Criança (&lt; 13a)
+                👶 Criança (&lt;13a)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsElderly(false);
+                  handlePediatricToggle(false);
+                }}
+                className={`py-2 px-2 rounded-xl text-xs font-bold transition border text-center ${
+                  !isPediatric && !isElderly
+                    ? 'bg-[#2563EB] text-white border-blue-600 shadow-md shadow-blue-200'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                👤 Adulto (&lt;65a)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsElderly(true);
+                  handlePediatricToggle(false);
+                  if (weightKg < 30) handleWeightChange(70);
+                }}
+                className={`py-2 px-2 rounded-xl text-xs font-bold transition border text-center ${
+                  isElderly
+                    ? 'bg-[#2563EB] text-white border-blue-600 shadow-md shadow-blue-200'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                👴 Idoso (≥65a)
               </button>
             </div>
           </div>
 
-          {/* Weight Input */}
-          <div>
+          {/* Weight Input with fluid backspace */}
+          <div className="lg:col-span-7">
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                 <Scale className="w-3.5 h-3.5 text-slate-400" /> Peso Corporal (kg)
               </label>
               <div className="flex items-center gap-1 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-lg">
                 <input
-                  type="number"
-                  min="1"
-                  max="250"
-                  step="0.5"
-                  value={weightKg}
-                  onChange={(e) => handleWeightChange(parseFloat(e.target.value) || 1)}
-                  className="w-14 bg-transparent text-right text-xs font-black text-[#2563EB] font-mono focus:outline-none"
+                  type="text"
+                  inputMode="decimal"
+                  value={weightInputStr}
+                  placeholder="Ex: 70"
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const sanitized = raw.replace(',', '.');
+                    if (sanitized === '' || /^[0-9]*\.?[0-9]*$/.test(sanitized)) {
+                      setWeightInputStr(sanitized);
+                      if (sanitized !== '' && !isNaN(Number(sanitized))) {
+                        const num = parseFloat(sanitized);
+                        if (num > 0) {
+                          setLocalWeight(num);
+                          onWeightChange?.(num);
+                        }
+                      }
+                    }
+                  }}
+                  onBlur={() => {
+                    const num = parseFloat(weightInputStr);
+                    if (isNaN(num) || num <= 0) {
+                      const defaultW = isPediatric ? 20 : 70;
+                      setWeightInputStr(String(defaultW));
+                      handleWeightChange(defaultW);
+                    } else {
+                      const clamped = Math.min(250, Math.max(1, num));
+                      setWeightInputStr(String(clamped));
+                      handleWeightChange(clamped);
+                    }
+                  }}
+                  className="w-16 bg-transparent text-right text-xs font-black text-[#2563EB] font-mono focus:outline-none"
                 />
                 <span className="text-xs font-black text-[#2563EB]">kg</span>
               </div>
@@ -153,52 +210,65 @@ export const HydrationCalculatorModal: React.FC<HydrationCalculatorModalProps> =
               <span>{isPediatric ? '60 kg' : '180 kg'}</span>
             </div>
           </div>
+        </div>
 
-          {/* Group Selector */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-              Classificação do Grupo
-            </label>
-            <select
-              value={selectedGroup}
-              onChange={(e) => setSelectedGroup(e.target.value as DengueGroup)}
-              className="w-full text-xs font-bold px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#2563EB]"
-            >
-              <option value={DengueGroup.GROUP_A}>GRUPO A (Ambulatorial • Oral)</option>
-              <option value={DengueGroup.GROUP_B}>GRUPO B (Observação • Oral no Leito)</option>
-              <option value={DengueGroup.GROUP_C}>GRUPO C (Internação • Venoso 10 mL/kg)</option>
-              <option value={DengueGroup.GROUP_D}>GRUPO D (UTI / Choque • 20 mL/kg em 20 min)</option>
-            </select>
+        {/* Group Selector with Buttons (no select dropdown) */}
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+            Classificação do Grupo
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              { id: DengueGroup.GROUP_A, label: 'GRUPO A', sub: 'Ambulatorial • Reidratação Oral' },
+              { id: DengueGroup.GROUP_B, label: 'GRUPO B', sub: 'Observação • Oral no Leito' },
+              { id: DengueGroup.GROUP_C, label: 'GRUPO C', sub: 'Internação • Venoso 10 mL/kg' },
+              { id: DengueGroup.GROUP_D, label: 'GRUPO D', sub: 'UTI • Choque 20 mL/kg em 20 min' },
+            ].map((g) => {
+              const isSelected = selectedGroup === g.id;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => setSelectedGroup(g.id)}
+                  className={`p-2.5 rounded-xl border text-left transition ${
+                    isSelected
+                      ? 'bg-[#2563EB] text-white border-blue-600 shadow-md shadow-blue-200'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="block text-xs font-black">{g.label}</span>
+                  <span className={`block text-[10px] mt-0.5 leading-tight ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
+                    {g.sub}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Special Warnings Checkboxes */}
-        <div className="pt-2 border-t border-slate-200/80 flex flex-wrap gap-4 text-xs">
-          <label className="flex items-center gap-2 cursor-pointer text-slate-700 font-medium">
-            <input
-              type="checkbox"
-              checked={hasHeartOrKidneyDisease}
-              onChange={(e) => setHasHeartOrKidneyDisease(e.target.checked)}
-              className="w-4 h-4 rounded text-[#2563EB] accent-[#2563EB]"
-            />
-            <span>Possui Cardiopatia Grave ou Insuficiência Renal (Risco de Sobrecarga)</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer text-slate-700 font-medium">
-            <input
-              type="checkbox"
-              checked={isElderly}
-              onChange={(e) => setIsElderly(e.target.checked)}
-              className="w-4 h-4 rounded text-[#2563EB] accent-[#2563EB]"
-            />
-            <span>Idoso (&gt; 65 anos)</span>
-          </label>
+        {/* Comorbidity Risk Toggle Button (No checkboxes) */}
+        <div className="pt-2 border-t border-slate-200/80 flex flex-wrap gap-2 text-xs">
+          <button
+            type="button"
+            onClick={() => setHasHeartOrKidneyDisease(!hasHeartOrKidneyDisease)}
+            className={`px-3 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-2 ${
+              hasHeartOrKidneyDisease
+                ? 'bg-amber-100 border-amber-300 text-amber-950 shadow-xs'
+                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <span>❤️ Cardiopatia Grave ou Insuficiência Renal</span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${hasHeartOrKidneyDisease ? 'bg-amber-200 text-amber-900' : 'bg-slate-100 text-slate-500'}`}>
+              {hasHeartOrKidneyDisease ? 'Ativo' : 'Não'}
+            </span>
+          </button>
         </div>
 
         {(hasHeartOrKidneyDisease || isElderly) && (
           <div className="bg-amber-50 border border-amber-300 rounded-xl p-3.5 text-xs text-amber-900 font-medium flex items-start gap-2.5">
             <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
             <span>
-              <strong>Alerta de Cautela Volêmica:</strong> Em idosos, cardiopatas e insuficiência renal, adequar os volumes de infusão venosa caso a caso, evitando sobrecarga hídrica, insuficiência cardíaca congestiva e edema agudo de pulmão.
+              <strong>Alerta de Cautela Volêmica {isElderly ? '(Paciente Idoso)' : ''}:</strong> Em idosos, cardiopatas e pacientes com insuficiência renal, monitorar ausculta pulmonar, estase jugular e diurese a cada hora. Evitar sobrecarga hídrica, insuficiência cardíaca congestiva e edema agudo de pulmão.
             </span>
           </div>
         )}

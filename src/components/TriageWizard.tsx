@@ -52,6 +52,8 @@ interface TriageWizardProps {
   onOpenTourniquetTest: () => void;
   onOpenHydrationModal: (weight: number, group: DengueGroup, isPediatric: boolean) => void;
   onNavigateToDatabase?: () => void;
+  recordToLoad?: ClinicalAttendanceRecord | null;
+  onRecordLoaded?: () => void;
 }
 
 const TRIAGE_STORAGE_KEY = 'dengue_triage_progress_v1';
@@ -69,6 +71,7 @@ interface TriageSavedProgress {
   specialConditions: SpecialConditions;
   labData: LaboratoryEvaluation;
   classifiedResult: TriageResult | null;
+  savedRecordId?: string | null;
 }
 
 const loadSavedTriage = (): TriageSavedProgress | null => {
@@ -90,13 +93,15 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
   onOpenTourniquetTest,
   onOpenHydrationModal,
   onNavigateToDatabase,
+  recordToLoad,
+  onRecordLoaded,
 }) => {
   // Load saved state from localStorage if present
   const saved = React.useMemo(() => loadSavedTriage(), []);
 
   // Local DB state
   const [isSavingLocal, setIsSavingLocal] = useState<boolean>(false);
-  const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
+  const [savedRecordId, setSavedRecordId] = useState<string | null>(() => saved?.savedRecordId ?? null);
   const [saveFeedback, setSaveFeedback] = useState<{ type: 'success' | 'warning' | 'error'; message: string } | null>(null);
 
   // Patient basic info
@@ -105,11 +110,24 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
   const [localWeight, setLocalWeight] = useState<number>(() => saved?.patientWeight ?? 70);
   const patientWeight = externalWeight !== undefined ? externalWeight : localWeight;
 
+  // Weight input string to allow fluid backspacing and editing on mobile keyboards without sticking to 1
+  const [weightInputStr, setWeightInputStr] = useState<string>(() => String(saved?.patientWeight ?? (externalWeight ?? 70)));
+
   const handleWeightChange = (val: number) => {
     const safeVal = Math.max(1, val);
     setLocalWeight(safeVal);
+    setWeightInputStr(String(safeVal));
     onWeightChange?.(safeVal);
   };
+
+  // Sync weightInputStr if patientWeight changes externally or from age preset
+  React.useEffect(() => {
+    if (patientWeight !== undefined && !isNaN(patientWeight)) {
+      if (parseFloat(weightInputStr) !== patientWeight && weightInputStr !== '') {
+        setWeightInputStr(String(patientWeight));
+      }
+    }
+  }, [patientWeight]);
 
   const prevIsPediatricRef = React.useRef(externalIsPediatric);
   React.useEffect(() => {
@@ -208,6 +226,7 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
         specialConditions,
         labData,
         classifiedResult,
+        savedRecordId,
       };
       localStorage.setItem(TRIAGE_STORAGE_KEY, JSON.stringify(dataToSave));
     } catch (e) {
@@ -226,7 +245,60 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
     specialConditions,
     labData,
     classifiedResult,
+    savedRecordId,
   ]);
+
+  // Load existing record for editing or updating if requested
+  React.useEffect(() => {
+    if (!recordToLoad) return;
+    setPatientName(recordToLoad.patientName || '');
+    setPatientAge(recordToLoad.patientAge ?? 35);
+    setLocalWeight(recordToLoad.patientWeight ?? 70);
+    setWeightInputStr(String(recordToLoad.patientWeight ?? 70));
+    onWeightChange?.(recordToLoad.patientWeight ?? 70);
+    onPediatricChange?.(recordToLoad.isPediatric ?? (recordToLoad.patientAge < 13));
+    setDiseaseDay(recordToLoad.diseaseDay !== undefined ? recordToLoad.diseaseDay : '');
+    setFacilityName(recordToLoad.facilityName || '');
+
+    if (recordToLoad.stage4Symptoms?.data) {
+      setSymptoms(recordToLoad.stage4Symptoms.data);
+    }
+    if (recordToLoad.stage1Severity?.data) {
+      setSeveritySigns(recordToLoad.stage1Severity.data);
+    }
+    if (recordToLoad.stage2Warning?.data) {
+      setWarningSigns(recordToLoad.stage2Warning.data);
+    }
+    if (recordToLoad.stage3Special?.data) {
+      setSpecialConditions(recordToLoad.stage3Special.data);
+    }
+    if (recordToLoad.labData) {
+      setLabData(recordToLoad.labData);
+    }
+
+    setClassifiedResult({
+      group: recordToLoad.group,
+      title: recordToLoad.title,
+      subtitle: recordToLoad.subtitle,
+      setting: recordToLoad.setting,
+      duration: recordToLoad.duration,
+      conduct: recordToLoad.conduct,
+      mandatoryExams: recordToLoad.mandatoryExams,
+      recommendedExams: recordToLoad.recommendedExams,
+      detectedSeveritySigns: recordToLoad.stage1Severity?.detectedList || [],
+      detectedWarningSigns: recordToLoad.stage2Warning?.detectedList || [],
+      detectedSpecialConditions: recordToLoad.stage3Special?.detectedList || [],
+    });
+
+    setSavedRecordId(recordToLoad.id);
+    setCurrentStep(5);
+    setSaveFeedback({
+      type: 'warning',
+      message: `Atendimento de "${recordToLoad.patientName}" carregado. Ao clicar em Gerar Laudo, os dados serão atualizados no banco local 🔄.`,
+    });
+
+    onRecordLoaded?.();
+  }, [recordToLoad]);
 
   const isPediatric = patientAge < 13;
 
@@ -357,13 +429,29 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
     setIsSavingLocal(true);
     setSaveFeedback(null);
 
-    try {
-      const recordId = savedRecordId || ('atend_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6));
-      const nowIso = new Date().toISOString();
+    const isUpdate = Boolean(savedRecordId);
+    let recordId = savedRecordId;
+    let originalCreatedAt = new Date().toISOString();
 
+    if (isUpdate && recordId) {
+      try {
+        const existing = await localDatabase.getRecordById(recordId);
+        if (existing) {
+          originalCreatedAt = existing.createdAt;
+        }
+      } catch (e) {
+        // ignore
+      }
+    } else {
+      recordId = 'atend_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
+    }
+
+    const nowIso = new Date().toISOString();
+
+    try {
       const record: ClinicalAttendanceRecord = {
         id: recordId,
-        createdAt: nowIso,
+        createdAt: originalCreatedAt,
         updatedAt: nowIso,
         patientName: patientName.trim() || 'Paciente Não Identificado',
         patientAge,
@@ -412,12 +500,14 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
       setSavedRecordId(recordId);
       setSaveFeedback({
         type: 'success',
-        message: 'Atendimento gravado com sucesso no Banco de Dados Local do aparelho! 💾',
+        message: isUpdate
+          ? 'Atendimento atualizado com sucesso no Banco de Dados Local! 🔄'
+          : 'Atendimento gravado com sucesso no Banco de Dados Local! 💾',
       });
     } catch (e: any) {
       setSaveFeedback({
         type: 'error',
-        message: 'Erro ao salvar atendimento no banco local: ' + (e.message || 'desconhecido'),
+        message: 'Erro ao salvar/atualizar atendimento no banco local: ' + (e.message || 'desconhecido'),
       });
     } finally {
       setIsSavingLocal(false);
@@ -532,12 +622,37 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
               <Scale className="w-3.5 h-3.5 text-slate-400" /> Peso (kg)
             </label>
             <input
-              type="number"
-              min="1"
-              max="250"
-              step="0.5"
-              value={patientWeight}
-              onChange={(e) => handleWeightChange(parseFloat(e.target.value) || 1)}
+              type="text"
+              inputMode="decimal"
+              value={weightInputStr}
+              placeholder="Ex: 70"
+              onChange={(e) => {
+                const raw = e.target.value;
+                const sanitized = raw.replace(',', '.');
+                // Allow empty string or digits with up to one decimal point
+                if (sanitized === '' || /^[0-9]*\.?[0-9]*$/.test(sanitized)) {
+                  setWeightInputStr(sanitized);
+                  if (sanitized !== '' && !isNaN(Number(sanitized))) {
+                    const num = parseFloat(sanitized);
+                    if (num > 0) {
+                      setLocalWeight(num);
+                      onWeightChange?.(num);
+                    }
+                  }
+                }
+              }}
+              onBlur={() => {
+                const num = parseFloat(weightInputStr);
+                if (isNaN(num) || num <= 0) {
+                  const defaultW = isPediatric ? 20 : 70;
+                  setWeightInputStr(String(defaultW));
+                  handleWeightChange(defaultW);
+                } else {
+                  const clamped = Math.min(250, Math.max(1, num));
+                  setWeightInputStr(String(clamped));
+                  handleWeightChange(clamped);
+                }
+              }}
               className="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100 focus:outline-none bg-slate-50 font-mono font-bold text-[#2563EB] transition"
             />
           </div>
@@ -1374,78 +1489,70 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
                 </div>
               </div>
 
-              {/* Local Storage & Cloud Sync Card */}
-              <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-slate-50 p-4 sm:p-5 rounded-xl border border-blue-200/80 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-lg shadow-sm flex-shrink-0">
-                      💾
-                    </div>
-                    <div>
-                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                        <span>Banco de Dados Local do Aparelho</span>
-                        {savedRecordId && (
-                          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                            <Check className="w-3 h-3" /> Gravado
-                          </span>
-                        )}
-                      </h4>
-                      <p className="text-[11px] text-slate-600">
-                        Grave este atendimento com todos os parâmetros do fluxo no banco local para consultas, relatórios ou exportação.
-                      </p>
-                    </div>
+              {/* Local Storage Auto-save Notice */}
+              <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-slate-50 p-3.5 sm:p-4 rounded-xl border border-blue-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-base shadow-xs flex-shrink-0">
+                    💾
                   </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleSaveAttendance}
-                      disabled={isSavingLocal}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs shadow-blue-200 transition disabled:opacity-50"
-                    >
-                      <Save className="w-3.5 h-3.5" />
-                      <span>{isSavingLocal ? 'Salvando...' : savedRecordId ? 'Salvo no Banco Local ✅' : 'Salvar no Banco Local'}</span>
-                    </button>
-
-                    {onNavigateToDatabase && (
-                      <button
-                        type="button"
-                        onClick={onNavigateToDatabase}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-xs transition"
-                      >
-                        <Database className="w-3.5 h-3.5 text-[#2563EB]" />
-                        <span>Ver Banco Local</span>
-                      </button>
-                    )}
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <span>Banco de Dados Local</span>
+                      {savedRecordId ? (
+                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                          <Check className="w-3 h-3" /> Gravado no Aparelho
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
+                          Gravação Automática ao Gerar Laudo
+                        </span>
+                      )}
+                    </h4>
+                    <p className="text-[11px] text-slate-600">
+                      {savedRecordId 
+                        ? 'Atendimento registrado com sucesso no banco de dados local (IndexedDB) para consultas e relatórios.' 
+                        : 'Ao clicar em "Gerar Laudo Completo / Imprimir PDF", o atendimento será gravado automaticamente no banco de dados local do seu dispositivo.'}
+                    </p>
                   </div>
                 </div>
 
-                {saveFeedback && (
-                  <div className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-2 ${
-                    saveFeedback.type === 'success'
-                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                      : saveFeedback.type === 'warning'
-                      ? 'bg-amber-50 border-amber-200 text-amber-900'
-                      : 'bg-red-50 border-red-200 text-red-900'
-                  }`}>
-                    <div className="flex items-center gap-2 font-medium">
-                      {saveFeedback.type === 'success' ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                      ) : (
-                        <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                      )}
-                      <span>{saveFeedback.message}</span>
-                    </div>
-                    <button 
-                      type="button"
-                      onClick={() => setSaveFeedback(null)}
-                      className="text-[11px] font-bold text-slate-500 hover:text-slate-700 underline"
-                    >
-                      Fechar
-                    </button>
-                  </div>
+                {onNavigateToDatabase && (
+                  <button
+                    type="button"
+                    onClick={onNavigateToDatabase}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-xs transition flex-shrink-0 self-start sm:self-auto"
+                  >
+                    <Database className="w-3.5 h-3.5 text-[#2563EB]" />
+                    <span>Ver Banco Local</span>
+                  </button>
                 )}
               </div>
+
+              {saveFeedback && (
+                <div className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-2 ${
+                  saveFeedback.type === 'success'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                    : saveFeedback.type === 'warning'
+                    ? 'bg-amber-50 border-amber-200 text-amber-900'
+                    : 'bg-red-50 border-red-200 text-red-900'
+                }`}>
+                  <div className="flex items-center gap-2 font-medium">
+                    {saveFeedback.type === 'success' ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                    )}
+                    <span>{saveFeedback.message}</span>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setSaveFeedback(null)}
+                    className="text-[11px] font-bold text-slate-500 hover:text-slate-700 underline"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Action Bar (Admit to Bed, Print Card, Tourniquet, etc.) */}
@@ -1477,7 +1584,10 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
                 </button>
 
                 <button
-                  onClick={() => {
+                  onClick={async () => {
+                    // Auto-save attendance directly to local database
+                    await handleSaveAttendance();
+
                     const now = new Date();
                     const dateStr = now.toLocaleDateString('pt-BR', {
                       day: '2-digit',
@@ -1523,10 +1633,11 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
                       recommendedExams: classifiedResult.recommendedExams,
                     });
                   }}
-                  className="bg-[#2563EB] hover:bg-blue-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-blue-200 transition flex items-center gap-1.5"
+                  disabled={isSavingLocal}
+                  className="bg-[#2563EB] hover:bg-blue-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-blue-200 transition flex items-center gap-1.5 disabled:opacity-50"
                 >
                   <Printer className="w-4 h-4" />
-                  Gerar Laudo Completo / Imprimir PDF 📄
+                  <span>{isSavingLocal ? 'Gravando e Gerando Laudo...' : 'Gerar Laudo Completo / Imprimir PDF 📄'}</span>
                 </button>
               </div>
             </div>

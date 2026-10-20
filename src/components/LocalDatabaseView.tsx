@@ -17,7 +17,8 @@ import {
   FileSpreadsheet,
   PlusCircle,
   FileText,
-  ShieldCheck
+  ShieldCheck,
+  Edit3
 } from 'lucide-react';
 import { ClinicalAttendanceRecord } from '../types/database';
 import { localDatabase } from '../services/localDatabase';
@@ -27,11 +28,13 @@ import { FullTriagePrintData } from '../types/print';
 interface LocalDatabaseViewProps {
   onOpenCardPrint: (data: FullTriagePrintData) => void;
   onNavigateToTriage?: () => void;
+  onLoadRecordToTriage?: (record: ClinicalAttendanceRecord) => void;
 }
 
 export const LocalDatabaseView: React.FC<LocalDatabaseViewProps> = ({
   onOpenCardPrint,
   onNavigateToTriage,
+  onLoadRecordToTriage,
 }) => {
   // Database records
   const [records, setRecords] = useState<ClinicalAttendanceRecord[]>([]);
@@ -521,6 +524,18 @@ export const LocalDatabaseView: React.FC<LocalDatabaseViewProps> = ({
                       <span>Detalhes</span>
                     </button>
 
+                    {onLoadRecordToTriage && (
+                      <button
+                        type="button"
+                        onClick={() => onLoadRecordToTriage(r)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition border border-indigo-200"
+                        title="Carregar atendimento para editar ou atualizar na triagem"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Editar / Atualizar</span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => handlePrintRecord(r)}
@@ -694,6 +709,19 @@ export const LocalDatabaseView: React.FC<LocalDatabaseViewProps> = ({
             <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
               <span className="text-[11px] text-slate-400 font-mono">ID: {selectedRecord.id}</span>
               <div className="flex items-center gap-2">
+                {onLoadRecordToTriage && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onLoadRecordToTriage(selectedRecord);
+                      setSelectedRecord(null);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs border border-indigo-200 transition"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Editar / Atualizar na Triagem</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -702,7 +730,7 @@ export const LocalDatabaseView: React.FC<LocalDatabaseViewProps> = ({
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>Imprimir Cartão de Acompanhamento</span>
+                  <span>Imprimir Cartão</span>
                 </button>
               </div>
             </div>
