@@ -861,9 +861,11 @@ export const PrintableCardModal: React.FC<PrintableCardModalProps> = ({
                     </p>
                   </div>
                 </div>
-                <div className="text-right flex-shrink-0 border-l border-slate-300/80 pl-3 sm:pl-4 self-center">
-                  <span className="text-[9px] font-bold text-slate-500 block uppercase tracking-wider">Local de Manejo:</span>
-                  <span className="text-[11px] sm:text-xs print:text-[11px] font-black text-slate-900 block mt-0.5 whitespace-nowrap">
+                <div className="text-right flex-shrink-0 border-l border-slate-300/80 pl-2.5 sm:pl-3 print:pl-2.5 self-start sm:self-center max-w-[115px] sm:max-w-[135px] print:max-w-[110px]">
+                  <span className="text-[8px] sm:text-[8.5px] print:text-[8px] font-bold text-slate-500 block uppercase tracking-wider leading-none">
+                    Local de Manejo:
+                  </span>
+                  <span className="text-[10px] sm:text-[10.5px] print:text-[9.5px] font-black text-slate-900 block mt-1 break-words leading-tight">
                     {currentPrintData?.setting || (
                       selectedGroup === DengueGroup.GROUP_A ? 'Ambulatorial (UBS)' :
                       selectedGroup === DengueGroup.GROUP_B ? 'Leito de Observação' :
