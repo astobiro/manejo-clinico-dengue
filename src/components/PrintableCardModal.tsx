@@ -810,7 +810,7 @@ export const PrintableCardModal: React.FC<PrintableCardModalProps> = ({
                 <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block flex items-center gap-1">
                   <Building2 className="w-3 h-3 text-slate-400" /> Unidade de Saúde / Serviço:
                 </span>
-                <strong className="text-slate-800 text-xs block truncate">{facilityName || 'Não informada'}</strong>
+                <strong className="text-slate-800 text-xs block break-words">{facilityName || 'Não informada'}</strong>
               </div>
 
               <div>
@@ -841,29 +841,29 @@ export const PrintableCardModal: React.FC<PrintableCardModalProps> = ({
 
               <div className="sm:col-span-2">
                 <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Profissional Responsável:</span>
-                <strong className="text-slate-800 text-xs truncate block">{attendingProfessional || 'Não informado'}</strong>
+                <strong className="text-slate-800 text-xs break-words block">{attendingProfessional || 'Não informado'}</strong>
               </div>
             </div>
 
-            {/* 3. CLASSIFICATION RESULT BANNER (Compact & Horizontal) */}
-            <div className={`p-2.5 sm:p-3 print:p-2 rounded-xl border-2 ${groupBadgeConfig.border} ${groupBadgeConfig.lightBg}`}>
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className={`px-2.5 py-1 rounded-lg font-black text-xs sm:text-sm print:text-xs uppercase tracking-wider ${groupBadgeConfig.bg} ${groupBadgeConfig.text} shadow-xs flex-shrink-0`}>
+            {/* 3. CLASSIFICATION RESULT BANNER (Expanded with multiline wrap) */}
+            <div className={`p-3 sm:p-4 print:p-3 rounded-xl border-2 ${groupBadgeConfig.border} ${groupBadgeConfig.lightBg} shadow-2xs`}>
+              <div className="flex items-start sm:items-center justify-between gap-3 sm:gap-4">
+                <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
+                  <span className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg font-black text-xs sm:text-sm print:text-xs uppercase tracking-wider ${groupBadgeConfig.bg} ${groupBadgeConfig.text} shadow-xs flex-shrink-0 mt-0.5`}>
                     {selectedGroup}
                   </span>
-                  <div className="min-w-0">
-                    <h2 className="text-xs sm:text-sm print:text-xs font-black text-slate-900 uppercase truncate">
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-xs sm:text-sm print:text-xs font-black text-slate-900 uppercase leading-snug break-words">
                       {currentPrintData?.title || groupBadgeConfig.name}
                     </h2>
-                    <p className="text-[10px] sm:text-[11px] print:text-[10px] text-slate-600 font-medium truncate">
+                    <p className="text-[10px] sm:text-[11px] print:text-[10px] text-slate-600 font-medium leading-normal mt-0.5 break-words">
                       {currentPrintData?.subtitle || 'Classificação clínica baseada no protocolo oficial de dengue'}
                     </p>
                   </div>
                 </div>
-                <div className="text-right flex-shrink-0 border-l border-slate-300/80 pl-3">
+                <div className="text-right flex-shrink-0 border-l border-slate-300/80 pl-3 sm:pl-4 self-center">
                   <span className="text-[9px] font-bold text-slate-500 block uppercase tracking-wider">Local de Manejo:</span>
-                  <span className="text-[11px] sm:text-xs print:text-[11px] font-black text-slate-900 block whitespace-nowrap">
+                  <span className="text-[11px] sm:text-xs print:text-[11px] font-black text-slate-900 block mt-0.5 whitespace-nowrap">
                     {currentPrintData?.setting || (
                       selectedGroup === DengueGroup.GROUP_A ? 'Ambulatorial (UBS)' :
                       selectedGroup === DengueGroup.GROUP_B ? 'Leito de Observação' :
