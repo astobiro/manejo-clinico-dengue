@@ -32,7 +32,8 @@ export interface ClinicalAttendanceRecord {
   
   // Patient details
   patientName: string;
-  patientAge: number;
+  ageGroup: string; // e.g. "Criança (< 13 anos)", "Adulto (< 65 anos)", "Idoso (>= 65 anos)"
+  patientAge?: number;
   patientWeight: number;
   isPediatric: boolean;
   patientGender?: 'M' | 'F' | 'Outro';

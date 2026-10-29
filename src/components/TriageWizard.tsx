@@ -251,12 +251,27 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
   // Load existing record for editing or updating if requested
   React.useEffect(() => {
     if (!recordToLoad) return;
-    setPatientName(recordToLoad.patientName || '');
-    setPatientAge(recordToLoad.patientAge ?? 35);
+    if (recordToLoad.ageGroup) {
+      if (recordToLoad.ageGroup.toLowerCase().includes('criança') || recordToLoad.ageGroup.toLowerCase().includes('crianca')) {
+        setPatientAge(8);
+        onPediatricChange?.(true);
+        setSpecialConditions(prev => ({ ...prev, elderlyOver65: false }));
+      } else if (recordToLoad.ageGroup.toLowerCase().includes('idoso')) {
+        setPatientAge(70);
+        onPediatricChange?.(false);
+        setSpecialConditions(prev => ({ ...prev, elderlyOver65: true }));
+      } else {
+        setPatientAge(35);
+        onPediatricChange?.(false);
+        setSpecialConditions(prev => ({ ...prev, elderlyOver65: false }));
+      }
+    } else {
+      setPatientAge(recordToLoad.patientAge ?? 35);
+      onPediatricChange?.(recordToLoad.isPediatric ?? ((recordToLoad.patientAge ?? 35) < 13));
+    }
     setLocalWeight(recordToLoad.patientWeight ?? 70);
     setWeightInputStr(String(recordToLoad.patientWeight ?? 70));
     onWeightChange?.(recordToLoad.patientWeight ?? 70);
-    onPediatricChange?.(recordToLoad.isPediatric ?? (recordToLoad.patientAge < 13));
     setDiseaseDay(recordToLoad.diseaseDay !== undefined ? recordToLoad.diseaseDay : '');
     setFacilityName(recordToLoad.facilityName || '');
 
@@ -448,12 +463,19 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
 
     const nowIso = new Date().toISOString();
 
+    const ageGroupLabel = (specialConditions.elderlyOver65 || patientAge >= 65)
+      ? 'Idoso (>= 65 anos)'
+      : (isPediatric || patientAge < 13)
+      ? 'Criança (< 13 anos)'
+      : 'Adulto (< 65 anos)';
+
     try {
       const record: ClinicalAttendanceRecord = {
         id: recordId,
         createdAt: originalCreatedAt,
         updatedAt: nowIso,
         patientName: patientName.trim() || 'Paciente Não Identificado',
+        ageGroup: ageGroupLabel,
         patientAge,
         patientWeight,
         isPediatric,
@@ -1598,8 +1620,15 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
                       minute: '2-digit',
                     });
 
+                    const ageGroupLabel = (specialConditions.elderlyOver65 || patientAge >= 65)
+                      ? 'Idoso (>= 65 anos)'
+                      : (isPediatric || patientAge < 13)
+                      ? 'Criança (< 13 anos)'
+                      : 'Adulto (< 65 anos)';
+
                     onOpenCardPrint({
                       patientName: patientName || 'Paciente Não Identificado',
+                      ageGroup: ageGroupLabel,
                       patientAge,
                       patientWeight,
                       facilityName: facilityName || '',

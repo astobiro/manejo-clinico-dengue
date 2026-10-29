@@ -139,6 +139,7 @@ export const LocalDatabaseView: React.FC<LocalDatabaseViewProps> = ({
   const handlePrintRecord = (r: ClinicalAttendanceRecord) => {
     const printData: FullTriagePrintData = {
       patientName: r.patientName,
+      ageGroup: r.ageGroup || (r.isPediatric || (r.patientAge && r.patientAge < 13) ? 'Criança (< 13 anos)' : (r.patientAge && r.patientAge >= 65) ? 'Idoso (>= 65 anos)' : 'Adulto (< 65 anos)'),
       patientAge: r.patientAge,
       patientWeight: r.patientWeight,
       patientCpfOrSus: r.patientCpfOrSus,
@@ -451,7 +452,7 @@ export const LocalDatabaseView: React.FC<LocalDatabaseViewProps> = ({
                       </span>
 
                       <span className="text-xs text-slate-500 font-medium">
-                        • {r.patientAge} anos {r.isPediatric && '👶 (Pediátrico)'} • {r.patientWeight} kg
+                        • {r.ageGroup || (r.isPediatric || (r.patientAge && r.patientAge < 13) ? 'Criança (< 13 anos)' : (r.patientAge && r.patientAge >= 65) ? 'Idoso (>= 65 anos)' : 'Adulto (< 65 anos)')} • {r.patientWeight} kg
                       </span>
 
                       {r.diseaseDay > 0 && (
@@ -600,8 +601,10 @@ export const LocalDatabaseView: React.FC<LocalDatabaseViewProps> = ({
               {/* Demographics Card */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                 <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Idade</span>
-                  <span className="font-bold text-slate-800">{selectedRecord.patientAge} anos</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Faixa Etária</span>
+                  <span className="font-bold text-slate-800">
+                    {selectedRecord.ageGroup || (selectedRecord.isPediatric || (selectedRecord.patientAge && selectedRecord.patientAge < 13) ? 'Criança (< 13 anos)' : (selectedRecord.patientAge && selectedRecord.patientAge >= 65) ? 'Idoso (>= 65 anos)' : 'Adulto (< 65 anos)')}
+                  </span>
                 </div>
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase block">Peso</span>

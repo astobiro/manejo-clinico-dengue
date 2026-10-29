@@ -2,7 +2,8 @@ import { DengueGroup, LaboratoryEvaluation, SeveritySigns, SpecialConditions, Sy
 
 export interface FullTriagePrintData {
   patientName: string;
-  patientAge: number;
+  ageGroup?: string;
+  patientAge?: number;
   patientWeight: number;
   patientCpfOrSus?: string;
   facilityName: string;

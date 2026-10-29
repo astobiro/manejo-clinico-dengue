@@ -95,11 +95,18 @@ export const PrintableCardModal: React.FC<PrintableCardModalProps> = ({
         if (parsed.diseaseDay !== undefined && parsed.diseaseDay !== '') {
           setDiseaseDay(parsed.diseaseDay);
         }
+        const computedAgeGroup = (parsed.specialConditions?.elderlyOver65 || parsed.patientAge >= 65)
+          ? 'Idoso (>= 65 anos)'
+          : (parsed.isPediatric || parsed.patientAge < 13)
+          ? 'Criança (< 13 anos)'
+          : 'Adulto (< 65 anos)';
+
         if (parsed.classifiedResult?.group) {
           setSelectedGroup(parsed.classifiedResult.group);
           setLiveData({
             ...initialData,
             patientName: parsed.patientName || 'Paciente',
+            ageGroup: computedAgeGroup,
             patientAge: parsed.patientAge,
             patientWeight: parsed.patientWeight,
             facilityName: parsed.facilityName,
@@ -823,7 +830,7 @@ export const PrintableCardModal: React.FC<PrintableCardModalProps> = ({
               <div>
                 <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Faixa Etária:</span>
                 <strong className="text-slate-800 text-xs">
-                  {patientAge >= 65 ? 'Idoso (>= 65 anos)' : isPediatric ? 'Criança (< 13 anos)' : 'Adulto (< 65 anos)'}
+                  {currentPrintData?.ageGroup || (patientAge >= 65 ? 'Idoso (>= 65 anos)' : isPediatric ? 'Criança (< 13 anos)' : 'Adulto (< 65 anos)')}
                 </strong>
               </div>
 

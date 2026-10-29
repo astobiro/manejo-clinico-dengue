@@ -169,7 +169,7 @@ export const localDatabase = {
       'ID',
       'Data/Hora',
       'Paciente',
-      'Idade (anos)',
+      'Faixa Etaria',
       'Peso (kg)',
       'Dia de Doenca',
       'Grupo de Risco',
@@ -194,7 +194,14 @@ export const localDatabase = {
       escapeCsv(r.id),
       escapeCsv(new Date(r.createdAt).toLocaleString('pt-BR')),
       escapeCsv(r.patientName),
-      escapeCsv(r.patientAge),
+      escapeCsv(
+        r.ageGroup ||
+        (r.isPediatric || (r.patientAge && r.patientAge < 13)
+          ? 'Criança (< 13 anos)'
+          : (r.patientAge && r.patientAge >= 65)
+          ? 'Idoso (>= 65 anos)'
+          : 'Adulto (< 65 anos)')
+      ),
       escapeCsv(r.patientWeight),
       escapeCsv(r.diseaseDay),
       escapeCsv(r.group),
