@@ -43,3 +43,39 @@ Desenvolvido com base nas diretrizes oficiais do **Ministério da Saúde do Bras
 - **Frontend:** React, TypeScript, Tailwind CSS, Lucide Icons.
 - **PWA & Offline:** Vite Plugin PWA, Workbox Service Worker.
 - **Armazenamento:** IndexedDB com fallback em LocalStorage (offline-first).
+
+---
+
+### Como Rodar o Projeto na Máquina Local
+
+#### 1. Pré-requisitos
+- **Node.js** (versão 18.x, 20.x ou superior recomendada): Baixe em [nodejs.org](https://nodejs.org/).
+- **npm** (já incluso com o Node.js) ou gerenciador de sua preferência (`yarn` ou `pnpm`).
+
+#### 2. Instalação das Dependências
+Abra o terminal na pasta raiz do projeto e execute:
+```bash
+npm install
+```
+
+#### 3. Iniciar o Servidor de Desenvolvimento
+Para rodar em modo de desenvolvimento com hot-reload:
+```bash
+npm run dev
+```
+O Vite iniciará o servidor local. Acesse no seu navegador:
+```
+http://localhost:3000
+```
+*(ou a porta indicada no terminal, ex: `http://localhost:5173` ou `http://localhost:3000`)*
+
+#### 4. Gerar Build de Produção
+Para compilar a aplicação otimizada para publicação:
+```bash
+npm run build
+```
+Para testar a build de produção localmente:
+```bash
+npm run preview
+```
+
