@@ -126,6 +126,22 @@
     page-break-inside: avoid !important;
   }
 
+  /* Enforce horizontal side-by-side layouts in print matching screen preview */
+  .print-page .print\:grid-cols-2 {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .print-page .print\:grid-cols-3 {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .print-page .print\:grid-cols-4 {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
   @page {
     size: A4 portrait;
     margin: 8mm 10mm;

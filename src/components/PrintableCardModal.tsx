@@ -798,7 +798,7 @@ export const PrintableCardModal: React.FC<PrintableCardModalProps> = ({
             </div>
 
             {/* 2. PATIENT, SERVICE & DATE IDENTIFICATION BLOCK */}
-            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-300 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 text-xs">
+            <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3.5 print:p-2.5 border border-slate-300 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 print:grid-cols-4 gap-2.5 print:gap-2 text-xs">
               <div>
                 <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block flex items-center gap-1">
                   <User className="w-3 h-3 text-slate-400" /> Paciente:
@@ -845,30 +845,30 @@ export const PrintableCardModal: React.FC<PrintableCardModalProps> = ({
               </div>
             </div>
 
-            {/* 3. CLASSIFICATION RESULT BANNER */}
-            <div className={`p-4 rounded-xl border-2 ${groupBadgeConfig.border} ${groupBadgeConfig.lightBg} space-y-1.5`}>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5">
-                  <span className={`px-3 py-1 rounded-lg font-black text-sm uppercase tracking-wider ${groupBadgeConfig.bg} ${groupBadgeConfig.text} shadow-xs`}>
+            {/* 3. CLASSIFICATION RESULT BANNER (Compact & Horizontal) */}
+            <div className={`p-2.5 sm:p-3 print:p-2 rounded-xl border-2 ${groupBadgeConfig.border} ${groupBadgeConfig.lightBg}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className={`px-2.5 py-1 rounded-lg font-black text-xs sm:text-sm print:text-xs uppercase tracking-wider ${groupBadgeConfig.bg} ${groupBadgeConfig.text} shadow-xs flex-shrink-0`}>
                     {selectedGroup}
                   </span>
-                  <div>
-                    <h2 className="text-sm sm:text-base font-black text-slate-900 uppercase">
+                  <div className="min-w-0">
+                    <h2 className="text-xs sm:text-sm print:text-xs font-black text-slate-900 uppercase truncate">
                       {currentPrintData?.title || groupBadgeConfig.name}
                     </h2>
-                    <p className="text-xs text-slate-600 font-medium">
-                      {currentPrintData?.subtitle || 'Classificação clínica baseada no protocolo de manejo de dengue'}
+                    <p className="text-[10px] sm:text-[11px] print:text-[10px] text-slate-600 font-medium truncate">
+                      {currentPrintData?.subtitle || 'Classificação clínica baseada no protocolo oficial de dengue'}
                     </p>
                   </div>
                 </div>
-                <div className="text-right flex-shrink-0">
-                  <span className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Local de Manejo:</span>
-                  <span className="text-xs font-black text-slate-800 block">
+                <div className="text-right flex-shrink-0 border-l border-slate-300/80 pl-3">
+                  <span className="text-[9px] font-bold text-slate-500 block uppercase tracking-wider">Local de Manejo:</span>
+                  <span className="text-[11px] sm:text-xs print:text-[11px] font-black text-slate-900 block whitespace-nowrap">
                     {currentPrintData?.setting || (
                       selectedGroup === DengueGroup.GROUP_A ? 'Ambulatorial (UBS)' :
-                      selectedGroup === DengueGroup.GROUP_B ? 'Leito de Observação (até hemograma)' :
-                      selectedGroup === DengueGroup.GROUP_C ? 'Internação Hospitalar (mín. 48h)' :
-                      'UTI / Emergência Imediata'
+                      selectedGroup === DengueGroup.GROUP_B ? 'Leito de Observação' :
+                      selectedGroup === DengueGroup.GROUP_C ? 'Internação (mín. 48h)' :
+                      'UTI / Emergência'
                     )}
                   </span>
                 </div>
@@ -876,7 +876,7 @@ export const PrintableCardModal: React.FC<PrintableCardModalProps> = ({
             </div>
 
             {/* 4. RESPONSES PROVIDED SEPARATED BY STAGE */}
-            <div className="space-y-3">
+            <div className="space-y-2.5 print:space-y-2">
               <h3 className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200 pb-1.5">
                 <span>📋</span> Respostas da Avaliação Clínica Estruturada ({
                   isGroupD ? 'Etapa 1 - Grupo D Definido' :
@@ -886,15 +886,16 @@ export const PrintableCardModal: React.FC<PrintableCardModalProps> = ({
                 })
               </h3>
 
-              <div className={`grid gap-3 text-xs ${
-                isGroupD ? 'grid-cols-1' :
-                isGroupC ? 'grid-cols-1 md:grid-cols-2' :
-                isGroupB ? 'grid-cols-1 md:grid-cols-3' :
-                'grid-cols-1 md:grid-cols-2'
+              <div className={`grid gap-2.5 print:gap-2 text-xs ${
+                isGroupD 
+                  ? 'grid-cols-1' 
+                  : isGroupC 
+                  ? 'grid-cols-1 sm:grid-cols-2 print:grid-cols-2' 
+                  : 'grid-cols-1 sm:grid-cols-3 print:grid-cols-3'
               }`}>
                 
                 {/* ETAPA 1: SINAIS DE GRAVIDADE (GRUPO D) */}
-                <div className={`p-3 rounded-xl border ${
+                <div className={`p-2.5 sm:p-3 print:p-2 rounded-xl border ${
                   currentPrintData?.stage1Severity?.detectedList && currentPrintData.stage1Severity.detectedList.length > 0
                     ? 'bg-red-50/80 border-red-300 text-red-950'
                     : 'bg-slate-50 border-slate-200 text-slate-700'
@@ -926,7 +927,7 @@ export const PrintableCardModal: React.FC<PrintableCardModalProps> = ({
 
                 {/* ETAPA 2: SINAIS DE ALARME (GRUPO C) */}
                 {!isGroupD && (
-                  <div className={`p-3 rounded-xl border ${
+                  <div className={`p-2.5 sm:p-3 print:p-2 rounded-xl border ${
                     currentPrintData?.stage2Warning?.detectedList && currentPrintData.stage2Warning.detectedList.length > 0
                       ? 'bg-amber-50/80 border-amber-300 text-amber-950'
                       : 'bg-slate-50 border-slate-200 text-slate-700'
@@ -959,7 +960,7 @@ export const PrintableCardModal: React.FC<PrintableCardModalProps> = ({
 
                 {/* ETAPA 3: CONDIÇÕES ESPECIAIS & SANGRAMENTO PELE (GRUPO B) */}
                 {!isGroupD && !isGroupC && (
-                  <div className={`p-3 rounded-xl border ${
+                  <div className={`p-2.5 sm:p-3 print:p-2 rounded-xl border ${
                     currentPrintData?.stage3Special?.detectedList && currentPrintData.stage3Special.detectedList.length > 0
                       ? 'bg-sky-50/80 border-sky-300 text-sky-950'
                       : 'bg-slate-50 border-slate-200 text-slate-700'
@@ -1001,40 +1002,40 @@ export const PrintableCardModal: React.FC<PrintableCardModalProps> = ({
 
               {/* Group Specific Regimen */}
               {selectedGroup === DengueGroup.GROUP_A || selectedGroup === DengueGroup.GROUP_B ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-                  <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                <div className="grid grid-cols-1 sm:grid-cols-3 print:grid-cols-3 gap-2.5 print:gap-2">
+                  <div className="bg-white p-2.5 sm:p-3 print:p-2 rounded-lg border border-slate-200 space-y-0.5">
+                    <span className="text-[9px] sm:text-[10px] print:text-[9px] font-bold text-slate-500 uppercase tracking-wider block">
                       Volume Diário Recomendado
                     </span>
-                    <strong className="text-base text-slate-900 block font-black">
+                    <strong className="text-sm sm:text-base print:text-sm text-slate-900 block font-black">
                       {oralDailyVolume.toLocaleString('pt-BR')} mL / dia
                     </strong>
-                    <span className="text-[10px] text-slate-500 block">
-                      {isPediatric ? 'Cálculo por regra pediátrica oficial' : '60 mL/kg/dia para adultos'}
+                    <span className="text-[9px] sm:text-[10px] print:text-[9px] text-slate-500 block leading-tight">
+                      {isPediatric ? 'Regra pediátrica oficial' : '60 mL/kg/dia para adultos'}
                     </span>
                   </div>
 
-                  <div className="bg-emerald-50/70 p-3 rounded-lg border border-emerald-200 space-y-1">
-                    <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
-                      1/3 Sais de Reidratação Oral (SRO)
+                  <div className="bg-emerald-50/70 p-2.5 sm:p-3 print:p-2 rounded-lg border border-emerald-200 space-y-0.5">
+                    <span className="text-[9px] sm:text-[10px] print:text-[9px] font-bold text-emerald-800 uppercase tracking-wider block">
+                      1/3 Sais Reidratação (SRO)
                     </span>
-                    <strong className="text-base text-emerald-950 block font-black">
+                    <strong className="text-sm sm:text-base print:text-sm text-emerald-950 block font-black">
                       {sroVolume.toLocaleString('pt-BR')} mL / dia
                     </strong>
-                    <span className="text-[10px] text-emerald-700 block">
-                      Administrar com maior frequência nas primeiras horas
+                    <span className="text-[9px] sm:text-[10px] print:text-[9px] text-emerald-700 block leading-tight">
+                      Maior frequência nas primeiras horas
                     </span>
                   </div>
 
-                  <div className="bg-blue-50/70 p-3 rounded-lg border border-blue-200 space-y-1">
-                    <span className="text-[10px] font-bold text-blue-800 uppercase tracking-wider block">
+                  <div className="bg-blue-50/70 p-2.5 sm:p-3 print:p-2 rounded-lg border border-blue-200 space-y-0.5">
+                    <span className="text-[9px] sm:text-[10px] print:text-[9px] font-bold text-blue-800 uppercase tracking-wider block">
                       2/3 Líquidos Caseiros
                     </span>
-                    <strong className="text-base text-blue-950 block font-black">
+                    <strong className="text-sm sm:text-base print:text-sm text-blue-950 block font-black">
                       {liquidsVolume.toLocaleString('pt-BR')} mL / dia
                     </strong>
-                    <span className="text-[10px] text-blue-700 block">
-                      Água tratada, água de coco, sucos naturais e chás
+                    <span className="text-[9px] sm:text-[10px] print:text-[9px] text-blue-700 block leading-tight">
+                      Água, água de coco, sucos e chás
                     </span>
                   </div>
                 </div>
@@ -1065,7 +1066,7 @@ export const PrintableCardModal: React.FC<PrintableCardModalProps> = ({
               )}
 
               {/* Reassessment & Specific Warnings */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-2.5 print:gap-2 pt-1 text-xs">
                 <div className="bg-white p-2.5 rounded-lg border border-slate-200">
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
                     📅 Reavaliação e Retorno Programado:
@@ -1097,8 +1098,8 @@ export const PrintableCardModal: React.FC<PrintableCardModalProps> = ({
             </div>
 
             {/* 6. WARNING SIGNS & CONTRAINDICATIONS ALERT */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-              <div className="border border-amber-300 bg-amber-50 p-3 rounded-xl space-y-1 text-amber-950">
+            <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-2.5 print:gap-2 text-xs">
+              <div className="border border-amber-300 bg-amber-50 p-2.5 sm:p-3 print:p-2.5 rounded-xl space-y-1 text-amber-950">
                 <div className="flex items-center gap-1.5 font-black uppercase text-[11px] text-amber-900">
                   <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
                   <span>Sinais de Alarme (Retorno Imediato ao Serviço):</span>
@@ -1113,7 +1114,7 @@ export const PrintableCardModal: React.FC<PrintableCardModalProps> = ({
                 </div>
               </div>
 
-              <div className="border border-red-300 bg-red-50 p-3 rounded-xl space-y-1 text-red-950">
+              <div className="border border-red-300 bg-red-50 p-2.5 sm:p-3 print:p-2.5 rounded-xl space-y-1 text-red-950">
                 <div className="flex items-center gap-1.5 font-black uppercase text-[11px] text-red-900">
                   <ShieldAlert className="w-4 h-4 text-red-600 flex-shrink-0" />
                   <span>Contraindicações Absolutas na Dengue:</span>
