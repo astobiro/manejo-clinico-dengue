@@ -11,6 +11,7 @@ interface HydrationCalculatorModalProps {
   initialIsPediatric?: boolean;
   onPediatricChange?: (isPed: boolean) => void;
   initialGroup?: DengueGroup;
+  initialIsElderly?: boolean;
   onClose?: () => void;
   isModal?: boolean;
 }
@@ -23,6 +24,7 @@ export const HydrationCalculatorModal: React.FC<HydrationCalculatorModalProps> =
   initialIsPediatric = false,
   onPediatricChange,
   initialGroup = DengueGroup.GROUP_A,
+  initialIsElderly = false,
   onClose,
   isModal = false,
 }) => {
@@ -52,7 +54,13 @@ export const HydrationCalculatorModal: React.FC<HydrationCalculatorModalProps> =
   );
 
   const isPediatric = externalIsPediatric !== undefined ? externalIsPediatric : localIsPediatric;
-  const [isElderly, setIsElderly] = useState<boolean>(false);
+  const [isElderly, setIsElderly] = useState<boolean>(initialIsElderly);
+
+  React.useEffect(() => {
+    if (initialIsElderly !== undefined) {
+      setIsElderly(initialIsElderly);
+    }
+  }, [initialIsElderly]);
 
   const handlePediatricToggle = (val: boolean) => {
     setLocalIsPediatric(val);
@@ -65,7 +73,36 @@ export const HydrationCalculatorModal: React.FC<HydrationCalculatorModalProps> =
   };
 
   const [selectedGroup, setSelectedGroup] = useState<DengueGroup>(initialGroup);
+  const [mirroredTriageGroup, setMirroredTriageGroup] = useState<DengueGroup | null>(initialGroup);
   const [hasHeartOrKidneyDisease, setHasHeartOrKidneyDisease] = useState<boolean>(false);
+
+  // Synchronize when initialGroup changes
+  React.useEffect(() => {
+    if (initialGroup) {
+      setSelectedGroup(initialGroup);
+      setMirroredTriageGroup(initialGroup);
+    }
+  }, [initialGroup]);
+
+  // Read saved progress from triage on mount if present to ensure consistency
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem('dengue_triage_progress_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.classifiedResult?.group) {
+          setSelectedGroup(parsed.classifiedResult.group);
+          setMirroredTriageGroup(parsed.classifiedResult.group);
+        }
+        if (initialIsElderly === undefined) {
+          const isEld = Boolean(parsed.specialConditions?.elderlyOver65 || (typeof parsed.patientAge === 'number' && parsed.patientAge >= 65));
+          if (isEld) setIsElderly(true);
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
 
   const calc = calculateHydration(weightKg, isPediatric, selectedGroup);
 
@@ -212,11 +249,27 @@ export const HydrationCalculatorModal: React.FC<HydrationCalculatorModalProps> =
           </div>
         </div>
 
-        {/* Group Selector with Buttons (no select dropdown) */}
+        {/* Group Selector with Buttons (mirrored from risk classification) */}
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-            Classificação do Grupo
-          </label>
+          <div className="flex flex-wrap items-center justify-between gap-1.5 mb-2">
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Classificação do Grupo
+            </label>
+            {mirroredTriageGroup && selectedGroup === mirroredTriageGroup ? (
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-300 px-2.5 py-1 rounded-full shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Espelhado da Triagem: <strong>{mirroredTriageGroup}</strong></span>
+              </span>
+            ) : mirroredTriageGroup ? (
+              <button
+                type="button"
+                onClick={() => setSelectedGroup(mirroredTriageGroup)}
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full transition hover:bg-blue-100"
+              >
+                <span>Restaurar Grupo da Triagem ({mirroredTriageGroup}) 🔄</span>
+              </button>
+            ) : null}
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
               { id: DengueGroup.GROUP_A, label: 'GRUPO A', sub: 'Ambulatorial • Reidratação Oral' },
@@ -225,18 +278,28 @@ export const HydrationCalculatorModal: React.FC<HydrationCalculatorModalProps> =
               { id: DengueGroup.GROUP_D, label: 'GRUPO D', sub: 'UTI • Choque 20 mL/kg em 20 min' },
             ].map((g) => {
               const isSelected = selectedGroup === g.id;
+              const isMirrored = mirroredTriageGroup === g.id;
               return (
                 <button
                   key={g.id}
                   type="button"
                   onClick={() => setSelectedGroup(g.id)}
-                  className={`p-2.5 rounded-xl border text-left transition ${
+                  className={`p-2.5 rounded-xl border text-left transition relative ${
                     isSelected
                       ? 'bg-[#2563EB] text-white border-blue-600 shadow-md shadow-blue-200'
                       : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                   }`}
                 >
-                  <span className="block text-xs font-black">{g.label}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="block text-xs font-black">{g.label}</span>
+                    {isMirrored && (
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
+                        isSelected ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
+                      }`}>
+                        Triagem
+                      </span>
+                    )}
+                  </div>
                   <span className={`block text-[10px] mt-0.5 leading-tight ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
                     {g.sub}
                   </span>

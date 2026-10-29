@@ -54,6 +54,7 @@ interface TriageWizardProps {
   onNavigateToDatabase?: () => void;
   recordToLoad?: ClinicalAttendanceRecord | null;
   onRecordLoaded?: () => void;
+  onClassificationChange?: (group: DengueGroup, isPediatric?: boolean, isElderly?: boolean, weight?: number) => void;
 }
 
 const TRIAGE_STORAGE_KEY = 'dengue_triage_progress_v1';
@@ -95,6 +96,7 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
   onNavigateToDatabase,
   recordToLoad,
   onRecordLoaded,
+  onClassificationChange,
 }) => {
   // Load saved state from localStorage if present
   const saved = React.useMemo(() => loadSavedTriage(), []);
@@ -107,6 +109,7 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
   // Patient basic info
   const [patientName, setPatientName] = useState<string>(() => saved?.patientName ?? '');
   const [patientAge, setPatientAge] = useState<number>(() => saved?.patientAge ?? (externalIsPediatric ? 8 : 35));
+  const isPediatric = patientAge < 13;
   const [localWeight, setLocalWeight] = useState<number>(() => saved?.patientWeight ?? 70);
   const patientWeight = externalWeight !== undefined ? externalWeight : localWeight;
 
@@ -248,6 +251,25 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
     savedRecordId,
   ]);
 
+  // Dynamically compute the active group based on triage signs or finalized result
+  const computedGroup = React.useMemo(() => {
+    if (classifiedResult?.group) return classifiedResult.group;
+    const hasSeverity = Object.values(severitySigns).some(Boolean);
+    if (hasSeverity) return DengueGroup.GROUP_D;
+    const hasWarning = Object.values(warningSigns).some(Boolean) || labData.hasHemoconcentration;
+    if (hasWarning) return DengueGroup.GROUP_C;
+    const isEld = Boolean(specialConditions.elderlyOver65 || patientAge >= 65);
+    const hasSpecial = Object.values(specialConditions).some(Boolean) || isEld;
+    if (hasSpecial) return DengueGroup.GROUP_B;
+    return DengueGroup.GROUP_A;
+  }, [classifiedResult, severitySigns, warningSigns, specialConditions, labData, patientAge]);
+
+  // Notify parent of active classification so other modules (like Hydration Calculator) stay synchronized
+  React.useEffect(() => {
+    const isEld = Boolean(specialConditions.elderlyOver65 || patientAge >= 65);
+    onClassificationChange?.(computedGroup, isPediatric, isEld, patientWeight);
+  }, [computedGroup, isPediatric, specialConditions.elderlyOver65, patientAge, patientWeight, onClassificationChange]);
+
   // Load existing record for editing or updating if requested
   React.useEffect(() => {
     if (!recordToLoad) return;
@@ -314,8 +336,6 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
 
     onRecordLoaded?.();
   }, [recordToLoad]);
-
-  const isPediatric = patientAge < 13;
 
   // Evaluate suspected dengue criteria
   const countSelectedSymptoms = Object.values(symptoms.symptoms).filter(Boolean).length;
@@ -437,6 +457,7 @@ export const TriageWizard: React.FC<TriageWizardProps> = ({
     setSavedRecordId(null);
     setSaveFeedback(null);
     onPediatricChange?.(false);
+    onClassificationChange?.(DengueGroup.GROUP_A, false, false, 70);
   };
 
   const handleSaveAttendance = async () => {

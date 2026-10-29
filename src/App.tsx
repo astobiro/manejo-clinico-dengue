@@ -16,15 +16,32 @@ const getSavedTriageInitial = () => {
     const raw = localStorage.getItem('dengue_triage_progress_v1');
     if (raw) {
       const parsed = JSON.parse(raw);
+      const isPed = typeof parsed.patientAge === 'number' ? parsed.patientAge < 13 : false;
+      const isEld = Boolean(parsed.specialConditions?.elderlyOver65 || (typeof parsed.patientAge === 'number' && parsed.patientAge >= 65));
+
+      let grp = DengueGroup.GROUP_A;
+      if (parsed.classifiedResult?.group) {
+        grp = parsed.classifiedResult.group;
+      } else {
+        const hasSeverity = parsed.severitySigns && Object.values(parsed.severitySigns).some(Boolean);
+        const hasWarning = (parsed.warningSigns && Object.values(parsed.warningSigns).some(Boolean)) || parsed.labData?.hasHemoconcentration;
+        const hasSpecial = (parsed.specialConditions && Object.values(parsed.specialConditions).some(Boolean)) || isEld;
+        if (hasSeverity) grp = DengueGroup.GROUP_D;
+        else if (hasWarning) grp = DengueGroup.GROUP_C;
+        else if (hasSpecial) grp = DengueGroup.GROUP_B;
+      }
+
       return {
-        weight: typeof parsed.patientWeight === 'number' ? parsed.patientWeight : 70,
-        isPediatric: typeof parsed.patientAge === 'number' ? parsed.patientAge < 13 : false,
+        weight: typeof parsed.patientWeight === 'number' ? parsed.patientWeight : (isPed ? 20 : 70),
+        isPediatric: isPed,
+        isElderly: isEld,
+        group: grp,
       };
     }
   } catch (e) {
     // ignore
   }
-  return { weight: 70, isPediatric: false };
+  return { weight: 70, isPediatric: false, isElderly: false, group: DengueGroup.GROUP_A };
 };
 
 export default function App() {
@@ -34,9 +51,11 @@ export default function App() {
   // Record selected from database for editing/updating in TriageWizard
   const [recordToLoadInTriage, setRecordToLoadInTriage] = useState<ClinicalAttendanceRecord | null>(null);
 
-  // Shared weight and pediatric status across triage and hydration calculator
+  // Shared weight, pediatric, elderly status and group across triage and hydration calculator
   const [patientWeight, setPatientWeight] = useState<number>(initialTriage.weight);
   const [isPediatric, setIsPediatric] = useState<boolean>(initialTriage.isPediatric);
+  const [isElderly, setIsElderly] = useState<boolean>(initialTriage.isElderly);
+  const [patientGroup, setPatientGroup] = useState<DengueGroup>(initialTriage.group);
 
   const handlePediatricChange = (pediatric: boolean) => {
     setIsPediatric(pediatric);
@@ -47,12 +66,19 @@ export default function App() {
     }
   };
 
+  const handleClassificationChange = (group: DengueGroup, isPed?: boolean, isEld?: boolean, weight?: number) => {
+    setPatientGroup(group);
+    if (isPed !== undefined) setIsPediatric(isPed);
+    if (isEld !== undefined) setIsElderly(isEld);
+    if (weight !== undefined && weight > 0) setPatientWeight(weight);
+  };
+
   // Modals state
   const [isCardPrintModalOpen, setIsCardPrintModalOpen] = useState<boolean>(false);
   const [cardPrintData, setCardPrintData] = useState<any>(undefined);
 
   const [isHydrationModalOpen, setIsHydrationModalOpen] = useState<boolean>(false);
-  const [hydrationModalGroup, setHydrationModalGroup] = useState<DengueGroup>(DengueGroup.GROUP_A);
+  const [hydrationModalGroup, setHydrationModalGroup] = useState<DengueGroup>(initialTriage.group);
   const [hydrationModalIsPediatric, setHydrationModalIsPediatric] = useState<boolean>(false);
 
   const [isTourniquetModalOpen, setIsTourniquetModalOpen] = useState<boolean>(false);
@@ -65,12 +91,14 @@ export default function App() {
   const handleOpenHydrationModal = (weight: number, group: DengueGroup, isPed: boolean) => {
     setPatientWeight(weight);
     setHydrationModalGroup(group);
+    setPatientGroup(group);
     setIsPediatric(isPed);
     setHydrationModalIsPediatric(isPed);
     setIsHydrationModalOpen(true);
   };
 
   const handleSelectGroupFromFlowchart = (group: DengueGroup) => {
+    setPatientGroup(group);
     setActiveTab('triagem');
   };
 
@@ -82,6 +110,16 @@ export default function App() {
     if (record.isPediatric !== undefined) {
       setIsPediatric(record.isPediatric);
     }
+    if (record.group) {
+      setPatientGroup(record.group);
+      setHydrationModalGroup(record.group);
+    }
+    const isEld = Boolean(
+      record.ageGroup?.includes('Idoso') || 
+      record.stage3Special?.data?.elderlyOver65 || 
+      (record.patientAge && record.patientAge >= 65)
+    );
+    setIsElderly(isEld);
     setActiveTab('triagem');
   };
 
@@ -108,6 +146,7 @@ export default function App() {
             onNavigateToDatabase={() => setActiveTab('banco')}
             recordToLoad={recordToLoadInTriage}
             onRecordLoaded={() => setRecordToLoadInTriage(null)}
+            onClassificationChange={handleClassificationChange}
           />
         </div>
 
@@ -118,7 +157,8 @@ export default function App() {
             onWeightChange={setPatientWeight}
             isPediatric={isPediatric}
             onPediatricChange={handlePediatricChange}
-            initialGroup={DengueGroup.GROUP_A}
+            initialIsElderly={isElderly}
+            initialGroup={patientGroup}
             isModal={false}
           />
         )}
@@ -173,6 +213,7 @@ export default function App() {
           onWeightChange={setPatientWeight}
           initialGroup={hydrationModalGroup}
           initialIsPediatric={hydrationModalIsPediatric}
+          initialIsElderly={isElderly}
           isModal={true}
           onClose={() => setIsHydrationModalOpen(false)}
         />
